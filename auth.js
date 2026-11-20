@@ -58,7 +58,7 @@
     var body = css(document.createElement('div'), { padding: '20px 24px 8px', boxSizing: 'border-box' });
 
     var msg = document.createElement('p');
-    msg.textContent = 'Please sign in to continue processing mail.';
+    msg.textContent = 'Your session has expired, please login to continue';
     css(msg, {
       margin: '0 0 18px', padding: '10px 14px', borderLeft: '4px solid ' + BLUE,
       background: '#f5f9fc', color: '#555', fontSize: '.98rem', lineHeight: '1.4'
