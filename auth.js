@@ -1,84 +1,132 @@
 /*!
  * auth-dialog.js — IPROL sign-in popup (display only, no network logic).
- * Opens as soon as it runs. Heavy console logging for debugging.
+ * Styles applied via element.style (CSSOM) so a strict style-src CSP can't
+ * strip them, and so host-page CSS can't override them. Logs for debugging.
  */
 (function () {
   'use strict';
   console.log('[auth] 1. script started');
 
   try {
-    if (document.getElementById('iad')) {
-      console.log('[auth] already present, not opening again');
-      return;
-    }
+    if (document.getElementById('iad')) { console.log('[auth] already present'); return; }
 
-    var CSS =
-      '#iad{padding:0;border:0;border-radius:2px;width:min(440px,calc(100vw - 32px));' +
-      'background:#fff;color:#1e1e1e;font-family:inherit;box-shadow:0 10px 30px rgba(0,0,0,.25)}' +
-      '#iad::backdrop{background:rgba(30,30,30,.55)}' +
-      '#iad .h{background:#da202a;color:#fff;display:flex;align-items:center;gap:12px;' +
-      'padding:16px 20px;border-bottom:6px solid #c00f1a}' +
-      '#iad .h svg{width:26px;height:26px;fill:#fff}' +
-      '#iad h2{margin:0;font-size:1.35rem;font-weight:700}' +
-      '#iad .b{padding:20px 24px 8px}' +
-      '#iad .msg{margin:0 0 18px;padding:10px 14px;border-left:4px solid #0a7cc1;background:#f5f9fc;color:#555}' +
-      '#iad label{display:block;font-weight:700;margin:0 0 6px}' +
-      '#iad input{width:100%;box-sizing:border-box;font:inherit;font-size:1.05rem;padding:10px 14px;' +
-      'border:1px solid #cfcfcf;border-radius:2px;margin-bottom:16px}' +
-      '#iad input:focus{outline:none;border-color:#da202a;box-shadow:0 0 0 3px rgba(218,32,42,.15)}' +
-      '#iad .f{display:flex;justify-content:flex-end;gap:10px;padding:14px 24px 20px}' +
-      '#iad button.btn{font:inherit;font-size:1.05rem;font-weight:700;padding:10px 22px;border-radius:2px;' +
-      'cursor:pointer;border:2px solid #da202a;min-width:110px;background:#da202a;color:#fff}' +
-      '#iad button.btn:hover{background:#c00f1a}';
+    // Object.assign(el.style, {...}) uses CSSOM setters — NOT blocked by CSP style-src
+    var css = function (el, o) { Object.assign(el.style, o); return el; };
 
-    var LOCK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1a5 5 0 0 0-5 5v4H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm-3 5a3 3 0 1 1 6 0v4H9V6z"/></svg>';
+    var RED = '#da202a', RED_D = '#c00f1a', BLUE = '#0a7cc1';
 
-    var style = document.createElement('style');
-    style.textContent = CSS;
-    document.head.appendChild(style);
-    console.log('[auth] 2. styles injected');
+    /* Backdrop (plain div, dims the page; dialog sits above it in the top layer) */
+    var back = css(document.createElement('div'), {
+      position: 'fixed', inset: '0', background: 'rgba(30,30,30,.55)', zIndex: '2147483646'
+    });
+    back.id = 'iad-back';
+    document.body.appendChild(back);
 
+    /* Dialog */
     var dlg = document.createElement('dialog');
     dlg.id = 'iad';
-    dlg.innerHTML =
-      '<div class="h">' + LOCK + '<h2>Sign in</h2></div>' +
-      '<form>' +
-        '<div class="b">' +
-          '<p class="msg">Please sign in to continue processing mail.</p>' +
-          '<label for="iad-u">Username</label>' +
-          '<input id="iad-u" type="text" autocomplete="username">' +
-          '<label for="iad-p">Password</label>' +
-          '<input id="iad-p" type="password" autocomplete="current-password">' +
-        '</div>' +
-        '<div class="f"><button type="submit" class="btn">Sign in</button></div>' +
-      '</form>';
-    document.body.appendChild(dlg);
-    console.log('[auth] 3. dialog element added to page');
+    css(dlg, {
+      padding: '0', border: '0', borderRadius: '2px', width: 'min(440px, calc(100vw - 32px))',
+      maxWidth: 'calc(100vw - 32px)', background: '#fff', color: '#1e1e1e',
+      fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '16px',
+      boxShadow: '0 10px 30px rgba(0,0,0,.35)', zIndex: '2147483647'
+    });
+    console.log('[auth] 2. elements building');
 
-    console.log('[auth] 4. typeof dlg.showModal =', typeof dlg.showModal);
-    if (typeof dlg.showModal === 'function') {
-      dlg.showModal();
-      console.log('[auth] 5. showModal() called, dialog.open =', dlg.open);
-    } else {
-      // Fallback for very old browsers with no <dialog> support
-      dlg.setAttribute('open', '');
-      dlg.style.position = 'fixed';
-      dlg.style.top = '50%';
-      dlg.style.left = '50%';
-      dlg.style.transform = 'translate(-50%,-50%)';
-      dlg.style.zIndex = '9999';
-      console.log('[auth] 5. no native <dialog> support — used fallback positioning');
-    }
+    /* Header */
+    var head = css(document.createElement('div'), {
+      background: RED, color: '#fff', display: 'flex', alignItems: 'center', gap: '12px',
+      padding: '16px 20px', borderBottom: '6px solid ' + RED_D, boxSizing: 'border-box'
+    });
+    var svgNS = 'http://www.w3.org/2000/svg';
+    var svg = document.createElementNS(svgNS, 'svg');
+    svg.setAttribute('viewBox', '0 0 24 24');
+    svg.setAttribute('width', '26'); svg.setAttribute('height', '26');  // sized via attrs, not CSS
+    svg.setAttribute('fill', '#fff');
+    css(svg, { flex: 'none' });
+    var path = document.createElementNS(svgNS, 'path');
+    path.setAttribute('d', 'M12 1a5 5 0 0 0-5 5v4H6a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-9a2 2 0 0 0-2-2h-1V6a5 5 0 0 0-5-5zm-3 5a3 3 0 1 1 6 0v4H9V6z');
+    svg.appendChild(path);
+    var h2 = document.createElement('h2');
+    h2.textContent = 'Sign in';
+    css(h2, { margin: '0', fontSize: '1.35rem', fontWeight: '700' });
+    head.appendChild(svg); head.appendChild(h2);
 
-    dlg.querySelector('#iad-u').focus();
+    /* Form + body */
+    var form = document.createElement('form');
+    var body = css(document.createElement('div'), { padding: '20px 24px 8px', boxSizing: 'border-box' });
 
-    dlg.querySelector('form').addEventListener('submit', function (e) {
-      e.preventDefault();
-      console.log('[auth] submit clicked. username =', dlg.querySelector('#iad-u').value);
-      // (no network logic yet — this is where sign-in would go)
+    var msg = document.createElement('p');
+    msg.textContent = 'Please sign in to continue processing mail.';
+    css(msg, {
+      margin: '0 0 18px', padding: '10px 14px', borderLeft: '4px solid ' + BLUE,
+      background: '#f5f9fc', color: '#555', fontSize: '.98rem', lineHeight: '1.4'
     });
 
-    console.log('[auth] 6. done, popup should be visible');
+    function field(labelText, type) {
+      var wrap = document.createElement('div');
+      var label = document.createElement('label');
+      label.textContent = labelText;
+      css(label, { display: 'block', fontWeight: '700', margin: '0 0 6px' });
+      var input = document.createElement('input');
+      input.type = type;
+      css(input, {
+        width: '100%', boxSizing: 'border-box', font: 'inherit', fontSize: '1.05rem',
+        padding: '10px 14px', border: '1px solid #cfcfcf', borderRadius: '2px', margin: '0 0 16px'
+      });
+      input.addEventListener('focus', function () {
+        css(input, { borderColor: RED, outline: 'none', boxShadow: '0 0 0 3px rgba(218,32,42,.15)' });
+      });
+      input.addEventListener('blur', function () {
+        css(input, { borderColor: '#cfcfcf', boxShadow: 'none' });
+      });
+      wrap.appendChild(label); wrap.appendChild(input);
+      return { wrap: wrap, input: input };
+    }
+
+    var u = field('Username', 'text');
+    var p = field('Password', 'password');
+    body.appendChild(msg); body.appendChild(u.wrap); body.appendChild(p.wrap);
+
+    /* Footer */
+    var foot = css(document.createElement('div'), {
+      display: 'flex', justifyContent: 'flex-end', padding: '14px 24px 20px', boxSizing: 'border-box'
+    });
+    var go = document.createElement('button');
+    go.type = 'submit'; go.textContent = 'Sign in';
+    css(go, {
+      font: 'inherit', fontSize: '1.05rem', fontWeight: '700', padding: '10px 22px',
+      borderRadius: '2px', cursor: 'pointer', border: '2px solid ' + RED,
+      background: RED, color: '#fff', minWidth: '110px'
+    });
+    go.addEventListener('mouseenter', function () { css(go, { background: RED_D, borderColor: RED_D }); });
+    go.addEventListener('mouseleave', function () { css(go, { background: RED, borderColor: RED }); });
+    foot.appendChild(go);
+
+    form.appendChild(body); form.appendChild(foot);
+    dlg.appendChild(head); dlg.appendChild(form);
+    document.body.appendChild(dlg);
+    console.log('[auth] 3. dialog added to page');
+
+    console.log('[auth] 4. typeof showModal =', typeof dlg.showModal);
+    if (typeof dlg.showModal === 'function') {
+      dlg.showModal();
+      console.log('[auth] 5. showModal() called, open =', dlg.open);
+    } else {
+      css(dlg, { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)' });
+      dlg.setAttribute('open', '');
+      console.log('[auth] 5. no <dialog> support — fallback positioning used');
+    }
+
+    function cleanup() { dlg.remove(); back.remove(); }
+    form.addEventListener('submit', function (e) {
+      e.preventDefault();
+      console.log('[auth] submit — username =', u.input.value);
+      // no network logic yet; sign-in call goes here later
+    });
+
+    u.input.focus();
+    console.log('[auth] 6. done — styled popup should be visible');
   } catch (err) {
     console.log('[auth] ERROR:', err && err.message, err);
   }
