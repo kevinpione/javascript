@@ -2,30 +2,65 @@
  * auth-dialog.js — vanilla JS authentication dialog styled to match IPROL.
  * No dependencies. Uses the native <dialog> element (focus trap + Esc for free).
  *
- * Usage:
+ * Usage — just include it; the dialog opens as soon as the file loads:
  *   <script src="auth-dialog.js"></script>
  *
- *   // Simple: resolves with { username, password } or null if cancelled
- *   const creds = await AuthDialog.open();
- *
- *   // With async validation (dialog stays open, shows spinner + errors):
- *   const result = await AuthDialog.open({
- *     title: 'Supervisor sign in',
- *     message: 'This shortcut is locked. Enter supervisor credentials to continue.',
- *     usernameLabel: 'User ID',
- *     onSubmit: async ({ username, password }) => {
- *       const res = await fetch('/api/auth', {
- *         method: 'POST',
- *         headers: { 'Content-Type': 'application/json' },
- *         body: JSON.stringify({ username, password })
- *       });
- *       if (!res.ok) throw new Error('Incorrect user ID or password');
- *       return res.json();            // becomes the resolved value of open()
- *     }
- *   });
+ * Nothing is exposed globally. Everything is configured in CONFIG below.
  */
-(function (global) {
+(function () {
   'use strict';
+
+  /* ---------------------------------------------------------------------
+   * CONFIG — edit these to suit your site
+   * ------------------------------------------------------------------- */
+  var CONFIG = {
+    title: 'Sign in',
+    message: 'Please sign in to continue processing mail.',
+    usernameLabel: 'Username',
+    passwordLabel: 'Password',
+    submitText: 'Sign in',
+    cancelText: 'Cancel',
+
+    // false = user must sign in (no Cancel button, Esc / backdrop ignored)
+    dismissible: false,
+
+    // Endpoint that checks the credentials. POSTs JSON { username, password }.
+    // Any non-2xx response is treated as a failed sign in.
+    authUrl: '/api/auth',
+
+    // Message shown when the endpoint rejects the credentials
+    failedMessage: 'Incorrect username or password.',
+
+    // Where to go after a successful sign in. null = stay on the page.
+    redirectTo: null
+  };
+
+  // Checks the credentials against CONFIG.authUrl.
+  // Throw an Error to show its message in the dialog and keep it open.
+  function authenticate(creds) {
+    return fetch(CONFIG.authUrl, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(creds)
+    }).then(function (res) {
+      if (!res.ok) throw new Error(CONFIG.failedMessage);
+      return res.headers.get('content-type') &&
+             res.headers.get('content-type').indexOf('application/json') !== -1
+        ? res.json()
+        : true;
+    }, function () {
+      throw new Error('Unable to reach the server. Please try again.');
+    });
+  }
+
+  // Runs after a successful sign in.
+  function onAuthenticated(result) {
+    // Lets other scripts on the page react, without being able to open the dialog
+    document.dispatchEvent(new CustomEvent('iprol:authenticated', { detail: result }));
+    if (CONFIG.redirectTo) window.location.assign(CONFIG.redirectTo);
+  }
+  /* ------------------------------------------------------------------- */
 
   var STYLE_ID = 'iprol-auth-dialog-styles';
 
@@ -337,5 +372,25 @@
     });
   }
 
-  global.AuthDialog = { open: open };
-})(window);
+  // Open immediately on load (waits for <body> if the script is in <head>)
+  function start() {
+    open({
+      title: CONFIG.title,
+      message: CONFIG.message,
+      usernameLabel: CONFIG.usernameLabel,
+      passwordLabel: CONFIG.passwordLabel,
+      submitText: CONFIG.submitText,
+      cancelText: CONFIG.cancelText,
+      dismissible: CONFIG.dismissible,
+      onSubmit: authenticate
+    }).then(function (result) {
+      if (result !== null) onAuthenticated(result);
+    });
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', start, { once: true });
+  } else {
+    start();
+  }
+})();
