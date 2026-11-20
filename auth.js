@@ -27,7 +27,7 @@
     var dlg = document.createElement('dialog');
     dlg.id = 'iad';
     css(dlg, {
-      padding: '0', border: '0', borderRadius: '2px', width: 'min(440px, calc(100vw - 32px))',
+      padding: '0', border: '0', borderRadius: '2px', width: 'min(500px, calc(100vw - 32px))',
       maxWidth: 'calc(100vw - 32px)', background: '#fff', color: '#1e1e1e',
       fontFamily: 'Arial, Helvetica, sans-serif', fontSize: '16px',
       boxShadow: '0 10px 30px rgba(0,0,0,.35)', zIndex: '2147483647'
@@ -64,6 +64,15 @@
       background: '#f5f9fc', color: '#555', fontSize: '.98rem', lineHeight: '1.4'
     });
 
+    /* Validation error (hidden until Sign in is pressed) */
+    var err = document.createElement('div');
+    err.setAttribute('role', 'alert');
+    err.textContent = 'Username or password incorrect';
+    css(err, {
+      display: 'none', margin: '0 0 16px', padding: '10px 14px', borderLeft: '4px solid ' + RED,
+      background: '#fdeeee', color: RED_D, fontWeight: '700', fontSize: '.95rem'
+    });
+
     function field(labelText, type) {
       var wrap = document.createElement('div');
       var label = document.createElement('label');
@@ -87,7 +96,7 @@
 
     var u = field('Username', 'text');
     var p = field('Password', 'password');
-    body.appendChild(msg); body.appendChild(u.wrap); body.appendChild(p.wrap);
+    body.appendChild(msg); body.appendChild(err); body.appendChild(u.wrap); body.appendChild(p.wrap);
 
     /* Footer */
     var foot = css(document.createElement('div'), {
@@ -123,7 +132,10 @@
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       console.log('[auth] submit — username =', u.input.value);
-      // no network logic yet; sign-in call goes here later
+      // No real sign-in logic yet — show the validation message so we can see it.
+      err.style.display = 'block';
+      p.input.value = '';
+      p.input.focus();
     });
 
     u.input.focus();
