@@ -17,7 +17,8 @@
 
     /* Backdrop (plain div, dims the page; dialog sits above it in the top layer) */
     var back = css(document.createElement('div'), {
-      position: 'fixed', inset: '0', background: 'rgba(30,30,30,.55)', zIndex: '2147483646'
+      position: 'fixed', inset: '0', background: 'rgba(0,0,0,.7)',
+      backdropFilter: 'blur(4px)', WebkitBackdropFilter: 'blur(4px)', zIndex: '2147483646'
     });
     back.id = 'iad-back';
     document.body.appendChild(back);
@@ -49,7 +50,7 @@
     svg.appendChild(path);
     var h2 = document.createElement('h2');
     h2.textContent = 'Sign in';
-    css(h2, { margin: '0', fontSize: '1.35rem', fontWeight: '700' });
+    css(h2, { margin: '0', fontSize: '1.35rem', fontWeight: '700', color: '#fff' });
     head.appendChild(svg); head.appendChild(h2);
 
     /* Form + body */
